@@ -5,8 +5,11 @@
  *
  * Usage:
  *   node resolve-versions.mjs [--node] [--runtime <name>...] [--npm <pkg>...] [--action <owner/repo>...] [--inputs] [--json]
- *     --inputs  also list each action's inputs (name, default, deprecated) from its action.yml at the
- *               resolved commit, so `with:` keys come from the real action, not from memory
+ *     --inputs      also list each action's inputs (name, default, deprecated) from its action.yml at
+ *                   the resolved commit, so `with:` keys come from the real action, not from memory
+ *     --min-age N   pick the newest stable npm version / action release published at least N days
+ *                   ago (supply-chain cooldown; match pnpm's minimumReleaseAge or Dependabot cooldown).
+ *                   The absolute latest is still reported alongside.
  *
  * Examples:
  *   node resolve-versions.mjs --node --action actions/checkout actions/setup-node
@@ -27,6 +30,11 @@ import { execFileSync } from 'node:child_process';
 const args = process.argv.slice(2);
 const json = args.includes('--json');
 const withInputs = args.includes('--inputs');
+const minAgeIdx = args.indexOf('--min-age');
+const minAgeDays = minAgeIdx >= 0 ? Number(args[minAgeIdx + 1]) : 0;
+if (minAgeIdx >= 0 && !(minAgeDays >= 0)) { console.error('--min-age needs a number of days'); process.exit(2); }
+if (minAgeIdx >= 0) args.splice(minAgeIdx, 2);
+const cutoff = new Date(Date.now() - minAgeDays * 86400000).toISOString();
 const groups = { node: false, runtime: [], npm: [], action: [] };
 let current = null;
 for (const a of args) {
@@ -104,9 +112,21 @@ async function resolveRuntime(name) {
 
 // ---- npm packages --------------------------------------------------------------------------
 async function resolveNpm(pkg) {
-  const meta = await getJson(`https://registry.npmjs.org/${pkg.replace('/', '%2F')}`, { accept: 'application/vnd.npm.install-v1+json' });
+  if (!minAgeDays) {
+    const meta = await getJson(`https://registry.npmjs.org/${pkg.replace('/', '%2F')}`, { accept: 'application/vnd.npm.install-v1+json' });
+    const latest = meta['dist-tags']?.latest;
+    return latest ? { latest } : { error: 'no latest dist-tag' };
+  }
+  const meta = await getJson(`https://registry.npmjs.org/${pkg.replace('/', '%2F')}`);
   const latest = meta['dist-tags']?.latest;
-  return { latest, engines: undefined, ...(latest ? {} : { error: 'no latest dist-tag' }) };
+  const stable = Object.keys(meta.time ?? {})
+    .filter((v) => /^\d+\.\d+\.\d+$/.test(v) && meta.versions?.[v] && !meta.versions[v].deprecated)
+    .filter((v) => meta.time[v] <= cutoff)
+    .filter((v) => !latest || semverKey(v) <= semverKey(latest)) // never past the promoted "latest" tag
+    .sort((a, b) => (semverKey(a) < semverKey(b) ? 1 : -1));
+  const chosen = stable[0];
+  if (!chosen) return { latest, error: `no stable version older than ${minAgeDays} days` };
+  return { latest, latestPublished: meta.time[latest], chosen, chosenPublished: meta.time[chosen] };
 }
 
 // ---- GitHub Actions ------------------------------------------------------------------------
@@ -118,7 +138,9 @@ async function resolveAction(spec) {
   const isVersion = (n) => /^v?\d+(\.\d+)*$/.test(n);
   const newest = (names) => names.filter(isVersion).sort((a, b) => (semverKey(a) < semverKey(b) ? 1 : -1))[0];
   const releases = await getJson(`https://api.github.com/repos/${repo}/releases?per_page=50`, h).catch(() => []);
-  let tag = newest(releases.filter((r) => !r.prerelease && !r.draft).map((r) => r.tag_name));
+  const stableReleases = releases.filter((r) => !r.prerelease && !r.draft);
+  const latestTag = newest(stableReleases.map((r) => r.tag_name));
+  let tag = minAgeDays ? newest(stableReleases.filter((r) => (r.published_at ?? '') <= cutoff).map((r) => r.tag_name)) : latestTag;
   if (!tag) {
     const tags = await getJson(`https://api.github.com/repos/${repo}/tags?per_page=100`, h);
     tag = newest(tags.map((t) => t.name));
@@ -126,6 +148,7 @@ async function resolveAction(spec) {
   if (!tag) throw new Error(`no release or version tag found for ${repo}`);
   const commit = await getJson(`https://api.github.com/repos/${repo}/commits/${encodeURIComponent(tag)}`, h);
   const result = { version: tag, sha: commit.sha, uses: `${spec}@${commit.sha} # ${tag}`, releaseNotes: `https://github.com/${repo}/releases/tag/${tag}` };
+  if (minAgeDays && latestTag && latestTag !== tag) result.newerButTooRecent = latestTag;
   if (withInputs) result.inputs = await actionInputs(spec, commit.sha);
   return result;
 }
@@ -159,7 +182,7 @@ async function actionInputs(spec, sha) {
 }
 
 // ---- run -----------------------------------------------------------------------------------
-const out = { resolvedAt: new Date().toISOString() };
+const out = { resolvedAt: new Date().toISOString(), ...(minAgeDays ? { minAgeDays } : {}) };
 const tasks = [];
 const record = (section, key, p) =>
   tasks.push(p.then((v) => { (out[section] ??= {})[key] = v; }, (e) => { (out[section] ??= {})[key] = { error: e.message }; }));
@@ -184,10 +207,14 @@ if (json) {
   for (const [name, r] of Object.entries(out.runtimes ?? {})) {
     console.log(r.error ? `${name}: ERROR ${r.error}` : `${name}: supported ${r.supported.map((c) => c.cycle).join(', ')} (newest ${r.newest})`);
   }
-  for (const [name, r] of Object.entries(out.npm ?? {})) console.log(r.error ? `npm ${name}: ERROR ${r.error}` : `npm ${name}: ${r.latest}`);
+  for (const [name, r] of Object.entries(out.npm ?? {})) {
+    if (r.error) console.log(`npm ${name}: ERROR ${r.error}`);
+    else if (r.chosen) console.log(`npm ${name}: ${r.chosen} (published ${r.chosenPublished.slice(0, 10)})${r.chosen !== r.latest ? `; latest ${r.latest} is newer than ${minAgeDays} days` : ''}`);
+    else console.log(`npm ${name}: ${r.latest}`);
+  }
   for (const [name, r] of Object.entries(out.actions ?? {})) {
     if (r.error) { console.log(`action ${name}: ERROR ${r.error}`); continue; }
-    console.log(`uses: ${r.uses}`);
+    console.log(`uses: ${r.uses}${r.newerButTooRecent ? `   (${r.newerButTooRecent} is newer than ${minAgeDays} days)` : ''}`);
     if (Array.isArray(r.inputs)) {
       const fmt = (i) => `${i.name}${i.required ? '*' : ''}${i.default !== undefined && i.default !== '' ? `=${i.default}` : ''}${i.deprecated ? ' (deprecated)' : ''}`;
       console.log(`  inputs: ${r.inputs.map(fmt).join(', ') || '(none)'}`);

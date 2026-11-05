@@ -57,7 +57,11 @@ If the resolver cannot run (no network), say so explicitly in your summary and m
 you wrote as unverified, rather than presenting remembered versions as current.
 
 Version policy:
-- **Actions**: latest stable release, pinned to its commit SHA with the version as a comment.
+- **Cooldown**: run the resolver with `--min-age 7` so it picks the newest stable release that has
+  been public for at least 7 days (it still reports anything newer). Freshly published releases are
+  where supply-chain attacks land and where regressions get caught; a week's delay costs nothing.
+  Skip the cooldown only for a security fix the user needs now, and say so.
+- **Actions**: latest stable release (after the cooldown), pinned to its commit SHA with the version as a comment.
 - **Crossing a major version** (an existing workflow on `v4` moving to `v7`, or a pattern you know
   from an older major): first read what changed with
   `node <skill-dir>/scripts/release-notes.mjs <owner/repo> <current-version>`. Majors exist because
@@ -113,6 +117,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7      # same cooldown as the resolver; security updates are not delayed
     groups:
       actions:
         patterns: ["*"]
