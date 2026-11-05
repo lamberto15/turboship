@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: npm-ts-lib-to-pnpm
+expected_outcome: |
+  The library moves to pnpm (packageManager pinned, pnpm-lock.yaml, npm lockfile removed) and Biome, gains a verify script that CI runs on the supported Node LTS lines, package checks (publint, attw, pack dry-run), exports with types and a files whitelist, a ci-ok aggregator, pinned actions, Dependabot with cooldown, and verify passes locally.
+context:
+  scaffold_script: place-files.sh

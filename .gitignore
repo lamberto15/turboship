@@ -1,3 +1,5 @@
 github-actions-workspace/
 skills/*-workspace/
 .DS_Store
+package-ci-workspace/
+npm-release-workspace/

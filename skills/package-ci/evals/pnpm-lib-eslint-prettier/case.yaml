@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: pnpm-lib-eslint-prettier
+expected_outcome: |
+  CI is rebuilt around a verify script on supported Node LTS lines with package checks (publint, attw, pack dry-run) and a ci-ok aggregator; pnpm is upgraded to the current major and ESLint/Prettier are replaced by Biome (with the user told), exports/types/files fixed, actions pinned, Dependabot with cooldown, and verify passes locally.
+context:
+  scaffold_script: place-files.sh

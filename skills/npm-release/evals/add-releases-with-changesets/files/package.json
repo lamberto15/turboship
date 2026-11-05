@@ -1,0 +1,40 @@
+{
+	"name": "@acme/slugify-lite",
+	"version": "0.3.0",
+	"description": "Tiny slug and case helpers",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"packageManager": "pnpm@12.16.1",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/acme/slugify-lite.git"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome check .",
+		"format": "biome check --write .",
+		"test": "node --test test/*.test.ts",
+		"verify": "pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build"
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@biomejs/biome": "2.6.4",
+		"typescript": "^5.9.0"
+	}
+}

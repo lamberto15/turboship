@@ -1,0 +1,19 @@
+{
+  "name": "tiny-case",
+  "version": "1.0.0",
+  "description": "Convert strings between camelCase, snake_case and kebab-case",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

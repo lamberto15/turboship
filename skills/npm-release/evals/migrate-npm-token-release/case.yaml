@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: migrate-npm-token-release
+expected_outcome: |
+  The token-based tag release is replaced by changesets plus npm trusted publishing: no NPM_TOKEN or NODE_AUTH_TOKEN left, id-token: write only on the publish job, verify before publishing, a RELEASING.md covering trusted publisher setup and deleting the old secret, and nothing actually published.
+context:
+  scaffold_script: place-files.sh
