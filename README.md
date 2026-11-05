@@ -23,22 +23,31 @@ tutorials, and most of what a model remembers, point to outdated actions and end
 
 ### Measured
 
-Three realistic tasks (CI for a private Python API, a Docker image to GHCR, modernizing a 2021
-workflow), each run with and without the skill, graded by script (`tests/grade-github-actions.mjs`):
+Five realistic tasks, each run **3 times with and 3 times without** the skill (30 runs), graded by
+script (`tests/grade-github-actions.mjs`, 11–12 checks per task):
 
-| | Round 1 | Round 2 |
+| Task | With the skill | Without |
 |---|---|---|
-| With the skill | 100% | 97% |
-| Without | 58% | 65% |
+| CI for a private Python API (uv, free plan) | 100% | 79% |
+| Docker image to GHCR on tags | 97% | 61% |
+| Modernize a 2021 Node workflow | 100% | 67% |
+| Go service CI (race, golangci-lint) | 100% | 94% |
+| Deploy to staging → production with AWS OIDC | 100% | 82% |
+| **Overall** | **99.4%** | **76.6%** |
 
-Round 1's 100% hid a real bug: the skill upgraded `actions/setup-node` to v7, which no longer exports
-a placeholder `NODE_AUTH_TOKEN`, so a release job would have broken. Round 2 added the release-notes
-step and a regression check; the skill then caught it, and the baseline introduced it. The one
-round-2 miss (duplicate push + PR runs when the default branch is unknown) was fixed and re-verified
-at 12/12.
+With the skill, runs used about 8k more tokens and finished about 15 s faster on average.
 
-Without the skill, every run used unpinned actions, most of them one to three majors out of date,
-and none added Dependabot.
+Without it, the gap is mostly memory: actions not pinned to commits and one to three majors out of
+date, no Dependabot, missing job timeouts, and the old workflow still running every PR twice. On the
+Go task the model already does well on its own, so the skill adds little there.
+
+Earlier rounds also taught the skill to read release notes before crossing a major version. An
+early round flagged the `actions/setup-node` v7 `NODE_AUTH_TOKEN` change as breaking a release job;
+the official notes limit that to Yarn 1.x and older npm, so that claim was overstated and the grader
+now follows the notes.
+
+**Real repository:** CI written with the skill for `lamberto15/turbomerge` ran green on GitHub
+(Node 24 and 26) with no warnings.
 
 ## Install
 
