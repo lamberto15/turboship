@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: python-api-ci-private
+expected_outcome: |
+  A CI workflow for the uv-based FastAPI project that runs ruff and pytest on pull requests and on main, using currently supported Python versions within requires-python, linux runners only, caching and PR concurrency to save minutes, pinned actions, least-privilege permissions, timeouts, and Dependabot for actions.
+context:
+  scaffold_script: place-files.sh

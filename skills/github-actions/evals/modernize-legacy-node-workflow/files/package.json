@@ -1,0 +1,7 @@
+{
+  "name": "tiny-slugify",
+  "version": "2.4.1",
+  "engines": { "node": ">=22" },
+  "scripts": { "lint": "eslint .", "test": "node --test" },
+  "devDependencies": { "eslint": "^9.0.0" }
+}

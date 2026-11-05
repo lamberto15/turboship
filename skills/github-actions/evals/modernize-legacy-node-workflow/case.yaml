@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: modernize-legacy-node-workflow
+expected_outcome: |
+  The existing workflow modernized in place: same jobs and behavior (lint, test on a Node matrix, release on tags), current SHA-pinned actions, end-of-life Node versions replaced by supported LTS lines that respect engines, set-output replaced by GITHUB_OUTPUT, permissions/concurrency/timeouts added, duplicate push+PR runs avoided, Dependabot added, and the behavior changes explained.
+context:
+  scaffold_script: place-files.sh

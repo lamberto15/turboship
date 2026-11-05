@@ -1,0 +1,20 @@
+name: CI
+on:
+  push:
+  pull_request_target:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@1a4442cacd436585916779262731d5b162bc6ec7
+      - run: echo "${{ github.event.pull_request.title }}"
+      - name: multi
+        run: |
+          echo start
+          echo "${{ github.head_ref }}"
+      - run: npm test
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
