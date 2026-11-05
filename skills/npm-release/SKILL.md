@@ -149,9 +149,12 @@ Notes that matter:
 ### 5. Changeset check on PRs (`.github/workflows/changeset.yml`)
 
 On `pull_request`: checkout with `fetch-depth: 0`, setup, then
-`pnpm exec changeset status --since=origin/${{ github.base_ref }}`. Skip it for the Version Packages
-PR (`github.head_ref != 'changeset-release/<base>'`), for Dependabot, and when the PR has a
-`no-changeset` label (docs, CI, tests). Add this job to `ci-ok`'s `needs` only if the user wants
+`pnpm exec changeset status --since=origin/${{ github.base_ref }}` (pass the base ref through `env:`,
+not inline). Skip it for the Version Packages PR (`github.head_ref != format('changeset-release/{0}', github.base_ref)`),
+for Dependabot by **PR author** (`github.event.pull_request.user.login != 'dependabot[bot]'`; not
+`github.actor`, which is whoever triggered that particular run, e.g. a rerun or a label change), and
+when the PR has a `no-changeset` label (docs, CI, tests); include `labeled`/`unlabeled` in the
+`pull_request` types so adding the label re-evaluates the check. Add this job to `ci-ok`'s `needs` only if the user wants
 changesets enforced.
 
 ### 6. Repository hardening (show the commands; run them only after the user agrees)

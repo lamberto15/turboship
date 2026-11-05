@@ -108,6 +108,20 @@ Follow the github-actions skill's rules, with this structure:
 `cooldown: default-days: 7`, grouped: one PR for actions, one for development dependencies,
 production dependencies separately.
 
+`@types/node` must match the **oldest** Node the package supports (`engines.node`), not the newest:
+newer types describe APIs that users on the minimum Node don't have, and can even break the build
+(e.g. stricter `Blob`/`Uint8Array` typings). Add to the npm entry:
+
+```yaml
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+```
+
+When Dependabot proposes a grouped update that turns CI red, find which package causes it
+(update them one at a time locally), take the safe ones in a PR, and close the Dependabot PR with a
+comment saying why.
+
 ### 6. Validate locally before declaring done
 
 1. `pnpm install` then `pnpm run verify`: it must pass. If it fails because of the project (not
