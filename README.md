@@ -1,5 +1,7 @@
 # turboship
 
+[![skills.sh](https://skills.sh/b/lamberto15/turboship)](https://skills.sh/lamberto15/turboship)
+
 Claude skills for modern CI/CD with GitHub Actions. They **look up versions at the time they run**:
 current action releases pinned to commit SHAs, supported runtime versions, latest stable tools, with a
 7-day cooldown so brand-new releases (where supply-chain attacks land) aren't adopted instantly. Most
@@ -67,14 +69,21 @@ now follows the notes.
 
 ## Install
 
-As a Claude Code plugin, which installs every skill in the collection:
+With the [skills](https://skills.sh) CLI, for Claude Code, Codex, Cursor, OpenCode and other agents:
+
+```sh
+npx skills add lamberto15/turboship
+```
+
+Install the whole collection: `package-ci` and `npm-release` use the scripts of the `github-actions`
+skill, so it must be installed next to them.
+
+Or as a Claude Code plugin:
 
 ```
 /plugin marketplace add lamberto15/turboship
 /plugin install turboship@turboship
 ```
-
-Or copy a single skill folder (for example `skills/github-actions/`) into `~/.claude/skills/`.
 
 The scripts need Node.js 18 or newer. They use `GITHUB_TOKEN` / `GH_TOKEN` or a logged-in `gh` CLI
 to avoid GitHub's anonymous rate limit. actionlint is optional but recommended.
