@@ -1,0 +1,9 @@
+{
+  "name": "turboship",
+  "version": "0.1.0",
+  "description": "Modern CI/CD skills for GitHub Actions: workflows with live-resolved, SHA-pinned versions, least privilege, Dependabot and validation.",
+  "author": { "name": "lamberto15" },
+  "repository": "https://github.com/lamberto15/turboship",
+  "license": "MIT",
+  "keywords": ["github-actions", "ci", "cd", "workflows", "dependabot", "devops"]
+}

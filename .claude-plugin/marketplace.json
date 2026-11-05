@@ -1,0 +1,11 @@
+{
+  "name": "turboship",
+  "owner": { "name": "lamberto15" },
+  "plugins": [
+    {
+      "name": "turboship",
+      "source": "./",
+      "description": "Modern CI/CD skills for GitHub Actions with versions resolved live, never hard-coded."
+    }
+  ]
+}
