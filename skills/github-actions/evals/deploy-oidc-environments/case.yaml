@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: deploy-oidc-environments
+expected_outcome: |
+  A deploy workflow that builds once on pushes to main, deploys to a staging environment and then to a production environment protected by required reviewers, authenticates to AWS with GitHub OIDC (id-token: write on the deploy jobs, role-to-assume, no stored access keys), never cancels a deploy in progress, pins actions, sets timeouts, adds Dependabot, and tells the user the AWS IAM role/trust policy and environment setup they must do.
+context:
+  scaffold_script: place-files.sh

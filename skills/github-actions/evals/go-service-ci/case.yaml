@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: go-service-ci
+expected_outcome: |
+  A CI workflow for the Go module that uses the Go version from go.mod (or a supported Go release), runs go test with -race, runs golangci-lint through its SHA-pinned action, builds, uses PR concurrency, least-privilege permissions, timeouts, and adds Dependabot for actions and Go modules.
+context:
+  scaffold_script: place-files.sh

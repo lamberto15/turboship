@@ -76,7 +76,9 @@ if (caseName === 'python-api-ci-private') {
 }
 
 if (caseName === 'docker-ghcr-release') {
-  const pushGuarded = /push:\s*\$\{\{[^}]*(event_name\s*!=\s*'pull_request'|startsWith\(github\.ref,\s*'refs\/tags)/.test(wfText)
+  // any expression-driven push (event_name check, tag check, or an env flag derived from them) counts;
+  // a literal `push: true` only counts when the build step itself is skipped on PRs
+  const pushGuarded = /^\s+push:\s*\$\{\{/m.test(wfText)
     || (/if:.*pull_request/.test(wfText) && /push:\s*true/.test(wfText));
   check('The image is pushed only for non-PR events (PRs build without pushing)', pushGuarded, pushGuarded ? 'push conditioned on event' : 'no PR guard on push found');
   check('Triggers on v* version tags and on pull requests', /tags:\s*(\[\s*["']?v|\n\s*-\s*["']?v)/.test(wfText) && /pull_request/.test(wfText), 'tag + pull_request triggers checked');
@@ -98,6 +100,8 @@ if (caseName === 'modernize-legacy-node-workflow') {
   check('Node versions are only supported LTS lines satisfying engines >=22', workflows.length && bad.length === 0, `versions: ${[...nums].join(', ') || '(from file)'}${bad.length ? `; not allowed: ${bad.join(', ')}` : ''}`);
   const jobs = ['lint', 'test'].every((j) => new RegExp(`^  ${j}:`, 'm').test(wfText)) && /refs\/tags\/v|tags:/.test(wfText) && /npm publish/.test(wfText);
   check('The lint, test and release-on-tag jobs are all still present', jobs, jobs ? 'lint, test, tag release present' : 'a job or the tag release is missing');
+  const explains = /\b12\b/.test(summary) && /\b14\b/.test(summary) && /\b16\b/.test(summary) && /\b(22|24|26)\b/.test(summary);
+  check('The summary explains the behavior changes, including the dropped end-of-life Node versions', explains, explains ? 'summary names the old (12/14/16) and new Node versions' : 'summary does not name the dropped and new Node versions');
   // regression: setup-node >= v7 no longer exports a placeholder NODE_AUTH_TOKEN, so an install that
   // runs after registry-url in the release job needs the token (or setup-node < v7 kept on purpose)
   const relJob = wfText.split(/\n(?=  [A-Za-z0-9_-]+:\s*\n)/).find((j) => /^\s*(-\s+)?run:\s*npm publish|^\s{8,}npm publish/m.test(j)) ?? '';
@@ -105,12 +109,41 @@ if (caseName === 'modernize-legacy-node-workflow') {
   const usesRegistry = /registry-url:/.test(relJob);
   const tokenUses = (relJob.match(/NODE_AUTH_TOKEN/g) ?? []).length;
   const installAfter = /npm (ci|install)/.test(relJob);
-  const regressionOk = !usesRegistry || !installAfter || nodeMajor < 7 || tokenUses >= 2 || /^\s{4}env:[\s\S]*NODE_AUTH_TOKEN/m.test(relJob);
-  check('The release job install step still works with setup-node registry-url (token provided for npm ci on setup-node v7+, or v6 kept on purpose)', relJob !== '' && regressionOk,
-    `setup-node v${nodeMajor || '?'}; registry-url ${usesRegistry}; NODE_AUTH_TOKEN mentions ${tokenUses}`);
+  // setup-node v7 notes: without the dummy token "legacy Yarn Classic (1.x) and older Node/npm versions
+  // may fail". Modern npm (Node >= 20 here) is fine; yarn 1 or an old Node in that job is not.
+  const relNode = Number(/node-version:\s*["']?(\d+)/.exec(relJob)?.[1] ?? 0);
+  const modernNpm = !/yarn/.test(relJob) && relNode >= 20;
+  const regressionOk = !usesRegistry || !installAfter || nodeMajor < 7 || tokenUses >= 2 || /^\s{4}env:[\s\S]*NODE_AUTH_TOKEN/m.test(relJob) || modernNpm;
+  check('The release job install step still works with setup-node registry-url (v7 with modern npm, token provided, or v6 kept on purpose)', relJob !== '' && regressionOk,
+    `setup-node v${nodeMajor || '?'}; release job Node ${relNode || '?'}; registry-url ${usesRegistry}; NODE_AUTH_TOKEN mentions ${tokenUses}`);
   const onBlock = /^on:\s*([\s\S]*?)^(permissions|concurrency|jobs|env|defaults):/m.exec(wfText)?.[1] ?? '';
   const pushAll = /^on:\s*\[\s*push/m.test(wfText) || (/push:\s*$/m.test(onBlock) && !/branches:/.test(onBlock) && !/tags:/.test(onBlock));
   check('The workflow no longer runs twice per commit (push limited to the default branch/tags)', workflows.length && !pushAll, pushAll ? 'push on all branches + pull_request' : 'push restricted');
+}
+
+if (caseName === 'go-service-ci') {
+  const versions = [...wfText.matchAll(/go-version:\s*\[?([^\]\n]+)/g)].flatMap((m) => m[1].split(',').map((v) => v.trim().replace(/['"]/g, ''))).filter(Boolean);
+  const okVersion = /go-version-file:\s*["']?go\.mod/.test(wfText) || (versions.length > 0 && versions.every((v) => /^(1\.2[6-9]|1\.[3-9]\d|stable)(\.x|\.\d+)?$/.test(v)));
+  check('Uses the Go version from go.mod or only supported Go releases', okVersion, `go-version-file: ${/go-version-file/.test(wfText)}; versions: ${versions.join(', ') || '-'}`);
+  check('Runs go test with the race detector', /go test[^\n]*-race/.test(wfText), /go test[^\n]*-race/.test(wfText) ? 'go test -race found' : 'no -race');
+  check('Runs golangci-lint through its action', /golangci\/golangci-lint-action@/.test(wfText), /golangci-lint-action/.test(wfText) ? 'golangci-lint-action used' : 'not used');
+  check('Builds the module', /go build/.test(wfText), /go build/.test(wfText) ? 'go build found' : 'no go build');
+  check('PR runs are cancelled when superseded (concurrency with cancel-in-progress)', /concurrency:/.test(wfText) && /cancel-in-progress:/.test(wfText), /concurrency:/.test(wfText) ? 'concurrency configured' : 'no concurrency');
+}
+
+if (caseName === 'deploy-oidc-environments') {
+  const keys = /aws-access-key-id|aws-secret-access-key|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY/.test(wfText);
+  const oidc = /aws-actions\/configure-aws-credentials@/.test(wfText) && /role-to-assume:/.test(wfText);
+  check('Authenticates to AWS with OIDC (role-to-assume) and no stored access keys', oidc && !keys, `configure-aws-credentials+role-to-assume: ${oidc}; access keys referenced: ${keys}`);
+  const top = workflows.map((f) => readFileSync(f, 'utf8').split(/^jobs:/m)[0]).join('\n');
+  check('id-token: write is granted to deploy jobs only, not at the workflow top level', /id-token:\s*write/.test(wfText) && !/id-token:\s*write/.test(top), /id-token:\s*write/.test(top) ? 'id-token: write at top level' : /id-token:\s*write/.test(wfText) ? 'job-level only' : 'no id-token: write');
+  const jobBlocks = wfText.split(/\n(?=  [A-Za-z0-9_-]+:\s*\n)/);
+  const prodJob = jobBlocks.find((j) => /environment:\s*(\n\s+name:\s*)?["']?production/.test(j)) ?? '';
+  const stagingEnv = /environment:\s*(\n\s+name:\s*)?["']?staging/.test(wfText);
+  check('Deploys to staging and production GitHub Environments, production only after staging', stagingEnv && prodJob !== '' && /needs:/.test(prodJob), `staging env: ${stagingEnv}; production env: ${prodJob !== ''}; production needs: ${/needs:/.test(prodJob)}`);
+  check('A deploy in progress is never cancelled', !/cancel-in-progress:\s*true/.test(wfText), /cancel-in-progress:\s*true/.test(wfText) ? 'cancel-in-progress: true found' : 'no cancellation of deploys');
+  const setup = /trust (policy|relationship)|identity provider|OIDC provider/i.test(summary) && /required reviewer|reviewers|approv/i.test(summary);
+  check('The summary tells the user to create the AWS OIDC role/trust policy and set required reviewers on production', setup, `trust/provider mentioned: ${/trust (policy|relationship)|identity provider|OIDC provider/i.test(summary)}; reviewers mentioned: ${/required reviewer|reviewers|approv/i.test(summary)}`);
 }
 
 const passed = results.filter((r) => r.passed).length;
