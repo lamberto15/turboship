@@ -156,14 +156,18 @@ changesets enforced.
 
 ### 6. Repository hardening (show the commands; run them only after the user agrees)
 
-These change shared settings, so present them and ask before applying with `gh api`:
-- Workflow permissions read-only by default, and allow Actions to create PRs (for the Version
-  Packages PR): `gh api -X PUT repos/{o}/{r}/actions/permissions/workflow -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true`
-- Ruleset on the default branch: require a PR and the status check `ci-ok`; bypass only via PR,
-  not "always" (an "always" bypass lets an admin push untested code that then gets released).
-  Private repos need a paid plan for rulesets: say so instead of failing.
-- Ruleset protecting tags `v*` and `<name>@*` from deletion and force-push.
-- "Automatically delete head branches".
+These change shared settings, so present them and ask before applying. The exact, tested commands
+(history scan before going public, security features, Actions settings, rulesets JSON,
+RELEASE_PAT form, verification) are in **references/repo-hardening.md**. In short:
+- Before a repo goes public, scan its whole history for secrets and sensitive files.
+- Secret scanning + push protection, Dependabot alerts and security updates, private
+  vulnerability reporting, a short `SECURITY.md`, auto-delete merged branches.
+- Workflow token read-only by default; Actions may open PRs; fork workflows need approval.
+- Ruleset on the default branch: PR required, `ci-ok` required, no deletion/force-push, bypass
+  only via PR (never "always"). Ruleset protecting release tags. Private repos need a paid plan
+  for rulesets: say so instead of failing.
+- `RELEASE_PAT` so the Version Packages PR runs CI (and can satisfy the `ci-ok` rule).
+Merging into a protected default branch is the user's decision: open PRs, but let them merge.
 
 ### 7. RELEASING.md and the hand-over
 
@@ -182,8 +186,12 @@ flow and the one-time steps the maintainer must do, which you cannot:
    values when saved, and (per its docs at the time of writing) a new trusted publisher expires
    unless a publish succeeds within a couple of days: configure it right before the first CI
    release, not weeks ahead. Check the current rule in the npm docs.
-4. Optional `RELEASE_PAT` secret; repo settings from step 6; make the repo public before the
-   first OIDC release if provenance is wanted.
+4. Optional `RELEASE_PAT` secret (form fields in references/repo-hardening.md); repo settings
+   from step 6; make the repo public before the first OIDC release if provenance is wanted.
+
+Merge the setup PR **before** the first manual publish: publishing from the old default branch
+would ship the old name and setup (pnpm's clean-tree check is a useful guard here; never bypass it
+with `--no-git-checks`).
 
 ### 8. Validate
 
