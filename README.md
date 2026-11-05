@@ -1,14 +1,30 @@
 # turboship
 
 Claude skills for modern CI/CD with GitHub Actions. They **look up versions at the time they run**:
-current action releases pinned to commit SHAs, supported runtime versions, latest stable tools. Most
+current action releases pinned to commit SHAs, supported runtime versions, latest stable tools, with a
+7-day cooldown so brand-new releases (where supply-chain attacks land) aren't adopted instantly. Most
 tutorials, and most of what a model remembers, point to outdated actions and end-of-life runtimes.
 
 | Skill | Use it for | Status |
 |---|---|---|
 | [`github-actions`](skills/github-actions/SKILL.md) | Writing, modernizing and hardening workflows for any project: apps, APIs, libraries, Docker images, scheduled jobs, private or public repos | ✅ v0.1 |
-| `package-ci` | CI for JS/TS libraries (pnpm, biome, changesets) | planned |
-| `npm-release` | Releasing to npm with changesets and trusted publishing (OIDC, provenance) | planned |
+| [`package-ci`](skills/package-ci/SKILL.md) | CI for JS/TS libraries: pnpm, Biome, one `verify` script, Node LTS matrix, checks that the published package works (publint, arethetypeswrong, pack file list) | ✅ v0.1 |
+| [`npm-release`](skills/npm-release/SKILL.md) | Releasing to npm with Changesets and trusted publishing (OIDC, no token, provenance); never publishes by itself | ✅ v0.1 |
+
+The skills build on each other: `github-actions` → `package-ci` → `npm-release`.
+
+## Results
+
+| Skill | Benchmark | With the skill | Without | Real repository |
+|---|---|---|---|---|
+| github-actions | 5 tasks × 3 runs | 99.4% | 76.6% | turbomerge CI green on GitHub |
+| package-ci | 2 tasks × 1 run | 100% | 62% | turbomerge: pnpm + Biome + package checks, green on GitHub |
+| npm-release | 2 tasks × 1 run | 100% | 66% | turbomerge: changesets + trusted publishing workflows, CI green (nothing published) |
+
+The package graders don't just read files: they run `pnpm install --frozen-lockfile && pnpm run verify`
+on every output. Testing also caught things that went into the skills: Changesets v3's `changeset init`
+is interactive, Biome 2.6 lints Markdown, changesets/action v2 renamed its inputs and ignores a
+`GITHUB_TOKEN` env var, and pnpm refuses dependencies newer than its `minimumReleaseAge`.
 
 ## What `github-actions` does
 
