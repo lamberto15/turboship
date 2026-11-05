@@ -124,7 +124,9 @@ comment saying why.
 
 ### 6. Validate locally before declaring done
 
-1. `pnpm install` then `pnpm run verify`: it must pass. If it fails because of the project (not
+1. Run `pnpm run format` **after the last file you write** (Biome 2.6+ also formats YAML and
+   Markdown, so new workflows and READMEs are linted too), then `pnpm install` and
+   `pnpm run verify`: it must pass, and it must be the last command you run before reporting. If it fails because of the project (not
    the setup), report the failure with the output instead of weakening checks.
 2. Run the package checks locally (`publint`, `attw --pack .`, `pnpm pack --dry-run`).
 3. `actionlint` and `node ../github-actions/scripts/check-workflows.mjs --latest`.

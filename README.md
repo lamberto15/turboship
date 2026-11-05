@@ -18,8 +18,8 @@ The skills build on each other: `github-actions` → `package-ci` → `npm-relea
 | Skill | Benchmark | With the skill | Without | Real repository |
 |---|---|---|---|---|
 | github-actions | 5 tasks × 3 runs | 99.4% | 76.6% | turbomerge CI green on GitHub |
-| package-ci | 2 tasks × 1 run | 100% | 62% | turbomerge: pnpm + Biome + package checks, green on GitHub |
-| npm-release | 2 tasks × 1 run | 100% | 66% | turbomerge: changesets + trusted publishing workflows, CI green (nothing published) |
+| package-ci | 2 tasks × 3 runs | 99.0% ± 2.5 | 54.8% ± 15.2 | turbomerge: pnpm + Biome + package checks, green on GitHub |
+| npm-release | 2 tasks × 3 runs | 98.0% ± 3.1 | 68.0% ± 5.9 | turbomerge: `0.1.1` released fully by CI (changesets, trusted publishing, provenance) |
 
 The package graders don't just read files: they run `pnpm install --frozen-lockfile && pnpm run verify`
 on every output. Testing also caught things that went into the skills: Changesets v3's `changeset init`

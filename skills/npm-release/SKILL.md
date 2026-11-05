@@ -10,9 +10,10 @@ Packages" PR up to date, and merging that PR publishes to npm from CI, with no t
 provenance attestation that proves the package was built from this repo. Nothing is published from
 a laptop after the very first version.
 
-This skill builds on **package-ci** (pnpm, Biome, `verify` script, `.github/actions/setup`) and the
-**github-actions** rules and scripts (`../github-actions/scripts/`). If package-ci's setup is
-missing, apply that skill first.
+This skill builds on **package-ci** (pnpm, Biome, `verify` script, `.github/actions/setup`,
+Dependabot) and the **github-actions** rules and scripts (`../github-actions/scripts/`). If any part
+of package-ci's setup is missing, add it first, including `.github/dependabot.yml` with a cooldown:
+pinned action SHAs in the release workflow go stale without it.
 
 **This skill never runs `publish` itself.** Publishing is irreversible and belongs to the maintainer
 (first release) and to CI (every release after). It prepares everything and hands over a checklist.
@@ -205,6 +206,7 @@ with `--no-git-checks`).
 
 ### 8. Validate
 
+`pnpm run format` after the last file you write (Biome formats YAML and Markdown too), then
 `actionlint`, `node ../github-actions/scripts/check-workflows.mjs --latest`,
-`pnpm exec changeset status`, `pnpm run verify`, `pnpm pack --dry-run`. Then report: files changed,
+`pnpm exec changeset status`, `pnpm run verify` (last), `pnpm pack --dry-run`. Then report: files changed,
 versions used, what happens on the next merge, and the RELEASING.md checklist items still open.
