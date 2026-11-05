@@ -62,9 +62,11 @@ Version policy:
   from an older major): first read what changed with
   `node <skill-dir>/scripts/release-notes.mjs <owner/repo> <current-version>`. Majors exist because
   something broke: removed inputs, changed defaults, dropped environment variables, new required
-  permissions. For each breaking change, check whether this workflow relies on the old behavior and
-  adapt it (e.g. setup-node v7 stopped exporting a placeholder `NODE_AUTH_TOKEN`, so an install step
-  that runs after `registry-url` now needs the token or must not depend on it). If a breaking change
+  permissions. For each breaking change, check whether it actually applies to this workflow, and
+  read the exact conditions rather than reacting to the headline. Example: setup-node v7 stopped
+  exporting a placeholder `NODE_AUTH_TOKEN`; its notes say this can break Yarn 1.x and older npm
+  when `registry-url` is set, while current npm is unaffected, so it matters for a Yarn-1 release
+  job and not for one on a current Node LTS. If a breaking change
   can't be handled safely now, stay on the previous major, say why in the summary, and let
   Dependabot propose the upgrade later. Latest is the goal; a release that silently breaks is not.
 - **Runtimes in a test matrix**: the supported lines the project claims to support (trim to the
