@@ -140,9 +140,6 @@ Notes that matter:
   (Contents + Pull requests: read and write) fixes that.
 - Optional protection: give the publish job a GitHub Environment (e.g. `npm`) with required
   reviewers; the npm trusted publisher must then name that environment too.
-- `select-mode` uploads a small artifact (the publish plan). In a private repo whose account has
-  hit its artifact storage quota, the whole release fails at that step; see the github-actions
-  skill ("Private repositories") for the fix.
 - `pnpm publish` refuses to run from a branch other than `main`/`master` unless told otherwise
   (`publish-branch`). If the default branch has another name, mention it in RELEASING.md for the
   manual first publish (answer the prompt, or set `publish-branch` in `.npmrc`).

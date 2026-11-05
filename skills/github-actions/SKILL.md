@@ -154,15 +154,6 @@ docs path filters, and a lean matrix (newest + oldest supported version instead 
 unless the user wants full coverage). Branch rulesets / required status checks on private repos need a
 paid GitHub plan (Pro, Team, Enterprise); on a free plan, say so instead of writing settings that won't apply.
 
-Artifact storage is also an account-wide quota for private repos, and when it is full **every**
-workflow step that uploads an artifact fails ("Artifact storage quota has been hit"), including
-steps you didn't write yourself (e.g. changesets' select-mode uploads a publish plan). So in private
-repos: give `actions/upload-artifact` a short `retention-days` (1–7), upload only what a later job
-or a human needs, and suggest a short repository retention
-(`gh api -X PUT repos/{o}/{r}/actions/permissions/artifact-and-log-retention -F days=3`). If a run
-fails with the quota error, find the repos holding the storage
-(`gh api repos/{o}/{r}/actions/artifacts --jq .total_count`) and ask the user before deleting anything.
-
 ## Modernizing an existing workflow
 
 Preserve what the workflow does (jobs, triggers, secrets, artifacts, environment names); change how.
