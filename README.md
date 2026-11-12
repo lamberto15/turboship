@@ -9,9 +9,9 @@ tutorials, and most of what a model remembers, point to outdated actions and end
 
 | Skill | Use it for | Status |
 |---|---|---|
-| [`github-actions`](skills/github-actions/SKILL.md) | Writing, modernizing and hardening workflows for any project: apps, APIs, libraries, Docker images, scheduled jobs, private or public repos | ✅ v0.1 |
-| [`package-ci`](skills/package-ci/SKILL.md) | CI for JS/TS libraries: pnpm, Biome, one `verify` script, Node LTS matrix, checks that the published package works (publint, arethetypeswrong, pack file list) | ✅ v0.1 |
-| [`npm-release`](skills/npm-release/SKILL.md) | Releasing to npm with Changesets and trusted publishing (OIDC, no token, provenance); never publishes by itself | ✅ v0.1 |
+| [`github-actions`](skills/github-actions/SKILL.md) | Writing, modernizing and hardening workflows for any project: apps, APIs, libraries, Docker images, scheduled jobs, private or public repos | ✅ v0.2 |
+| [`package-ci`](skills/package-ci/SKILL.md) | CI for JS/TS libraries: pnpm, Biome, one `verify` script, Node LTS matrix, checks that the published package works (publint, arethetypeswrong, pack file list) | ✅ v0.2 |
+| [`npm-release`](skills/npm-release/SKILL.md) | Releasing to npm with Changesets and trusted publishing (OIDC, no token, provenance); never publishes by itself | ✅ v0.2 |
 
 The skills build on each other: `github-actions` → `package-ci` → `npm-release`.
 
@@ -19,14 +19,21 @@ The skills build on each other: `github-actions` → `package-ci` → `npm-relea
 
 | Skill | Benchmark | With the skill | Without | Real repository |
 |---|---|---|---|---|
-| github-actions | 5 tasks × 3 runs | 99.4% | 76.6% | turbomerge CI green on GitHub |
+| github-actions | 5 tasks × 3 runs | 100% | 75.5% | turbomerge CI green on GitHub |
 | package-ci | 2 tasks × 3 runs | 99.0% ± 2.5 | 54.8% ± 15.2 | turbomerge: pnpm + Biome + package checks, green on GitHub |
-| npm-release | 2 tasks × 3 runs | 98.0% ± 3.1 | 68.0% ± 5.9 | turbomerge: `0.1.1` released fully by CI (changesets, trusted publishing, provenance) |
+| npm-release | 2 tasks × 3 runs | 100% ± 0 | 58.7% ± 1.9 | turbomerge: `0.1.1` released fully by CI; a two-package monorepo released in pre mode (alpha) |
 
 The package graders don't just read files: they run `pnpm install --frozen-lockfile && pnpm run verify`
 on every output. Testing also caught things that went into the skills: Changesets v3's `changeset init`
 is interactive, Biome 2.6 lints Markdown, changesets/action v2 renamed its inputs and ignores a
-`GITHUB_TOKEN` env var, and pnpm refuses dependencies newer than its `minimumReleaseAge`.
+`GITHUB_TOKEN` env var, and pnpm refuses dependencies newer than its `minimumReleaseAge`. A real
+monorepo release added more (see [CHANGELOG.md](CHANGELOG.md)): an npm scope can be taken by a user
+account with no packages, the first publish with passkey 2FA only works in a real terminal, and
+Docker isn't always ready on fresh runners.
+
+The 2026-11-12 figures re-ran the changed cases (npm-release both tasks, github-actions Docker task)
+with the updated skills and re-graded the earlier no-skill runs with the new checks; the other
+github-actions tasks keep their earlier results.
 
 ## What `github-actions` does
 
