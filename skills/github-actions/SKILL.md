@@ -132,7 +132,8 @@ updates:
 1. **actionlint** (syntax, expressions, shellcheck of `run:` blocks, outdated action runners):
    `actionlint` if installed; otherwise `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest`,
    or install it (`brew install actionlint`, `go install github.com/rhysd/actionlint/cmd/actionlint@latest`).
-2. **Bundled policy check** (SHA pins, permissions, timeouts, concurrency, injection, outdated majors):
+2. **Bundled policy check** (SHA pins, permissions, timeouts, concurrency, injection, outdated majors,
+   Docker used before a readiness wait, hard-coded tarball names):
    `node <skill-dir>/scripts/check-workflows.mjs --latest`
 3. If the repo is pushed and `gh` is available, offer to trigger the workflow
    (`gh workflow run` / push a branch) and watch it (`gh run watch`) rather than assuming it passes.

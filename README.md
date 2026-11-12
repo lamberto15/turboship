@@ -54,13 +54,16 @@ script (`tests/grade-github-actions.mjs`, 11–12 checks per task):
 | Task | With the skill | Without |
 |---|---|---|
 | CI for a private Python API (uv, free plan) | 100% | 79% |
-| Docker image to GHCR on tags | 97% | 61% |
+| Docker image to GHCR on tags | 100% | 55% |
 | Modernize a 2021 Node workflow | 100% | 67% |
 | Go service CI (race, golangci-lint) | 100% | 94% |
 | Deploy to staging → production with AWS OIDC | 100% | 82% |
-| **Overall** | **99.4%** | **76.6%** |
+| **Overall** | **100%** | **75.5%** |
 
-With the skill, runs used about 8k more tokens and finished about 15 s faster on average.
+The Docker row is from 2026-11-12: re-run with the v0.2 skill (a new check for a provenance
+attestation and an SBOM; it was 97% / 61% with 11 checks), with the no-skill runs re-graded
+rather than re-run. In the original 30-run benchmark, runs with the skill used about 8k more
+tokens and finished about 15 s faster on average.
 
 Without it, the gap is mostly memory: actions not pinned to commits and one to three majors out of
 date, no Dependabot, missing job timeouts, and the old workflow still running every PR twice. On the
@@ -102,7 +105,7 @@ skills/<name>/SKILL.md        the skill
 skills/<name>/scripts/        helpers the skill runs (no dependencies)
 skills/<name>/references/     detail loaded only when needed
 skills/<name>/evals/          test cases (claude plugin eval format)
-tests/                        graders and script fixtures
+tests/                        graders and script fixtures (`node --test tests/` runs the checker tests)
 ```
 
 ## License
