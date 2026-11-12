@@ -15,6 +15,9 @@
  *   warn   CI workflow triggered by push/pull_request without `concurrency:`
  *   error  untrusted `${{ github.event.* }}` / `github.head_ref` expanded inside `run:` (script injection)
  *   error  `pull_request_target` together with a checkout of the PR head
+ *   warn   job runs docker compose / docker run / testcontainers before a `docker info` wait
+ *          (tests that start containers from inside `pnpm test` are invisible here)
+ *   warn   hard-coded tarball glob like `acme-ui-*.tgz` (breaks on a package rename)
  *   warn   (--latest) action major version is behind its latest release
  *
  * Exit code 1 when any error is found. Line-based on purpose: no dependencies, runs anywhere Node runs.
@@ -99,6 +102,8 @@ for (const file of files) {
     let job = null;
     let hasTimeout = false;
     let usesReusable = false;
+    let dockerReady = false; // a `docker info` wait seen earlier in this job
+    let dockerFlagged = false;
     const flush = () => {
       if (job && !hasTimeout && !usesReusable) add(file, job.line, 'warn', 'timeout', `job "${job.name}" has no timeout-minutes`);
     };
@@ -111,8 +116,18 @@ for (const file of files) {
         job = { name: jm[1], line: i + 1 };
         hasTimeout = false;
         usesReusable = false;
+        dockerReady = false;
+        dockerFlagged = false;
       } else if (/^ {4}timeout-minutes:/.test(l)) hasTimeout = true;
       else if (/^ {4}uses:/.test(l)) usesReusable = true; // reusable workflow call
+      const code = l.replace(/(^|\s)#.*$/, '');
+      if (/docker info/.test(code)) dockerReady = true;
+      else if (job && !dockerReady && !dockerFlagged && /\b(docker[ -]compose|docker run|testcontainers)\b/i.test(code)) {
+        dockerFlagged = true;
+        add(file, i + 1, 'warn', 'docker-ready', `job "${job.name}" uses Docker without first waiting for the daemon (add: timeout 90 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done')`);
+      }
+      const tgz = /([A-Za-z0-9][\w.@-]*-\*\.tgz)/.exec(code);
+      if (tgz) add(file, i + 1, 'warn', 'tarball-name', `hard-coded tarball name "${tgz[1]}" breaks when the package is renamed; derive it from package.json (pack into an empty directory, or pnpm pack --json)`);
     }
     flush();
   }

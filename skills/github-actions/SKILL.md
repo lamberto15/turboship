@@ -97,6 +97,9 @@ Each rule exists for a concrete reason; keep the reason in mind when a situation
 | Never expand untrusted input (`github.event.*` titles/bodies/branch names, `github.head_ref`) inside `run:`; pass it via `env:` | Expression expansion happens before the shell runs, so it is script injection. |
 | Deploys use GitHub **Environments** and cloud **OIDC** (`id-token: write`) instead of long-lived keys | Short-lived credentials, per-environment secrets, optional required reviewers before production. |
 | Two or more workflows with the same setup steps → a composite action in `.github/actions/setup/` | One place to change versions; workflows can't drift apart. |
+| Jobs whose tests or steps use Docker (testcontainers, `docker compose`, `docker run`): a `timeout 90 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done'` step first, and test setups that retry ~60 s when `CI` is set (`services:` containers are exempt: the runner waits for their health checks) | On fresh runners the daemon is intermittently not ready yet (seen on Ubuntu 26.04 images); without the wait, a release job that runs the tests fails at random. |
+| Timing/benchmark assertions only locally (`it.skipIf(process.env.CI)`) or in a nightly workflow, never in the per-push gate | Numbers measured on a laptop don't hold on shared Linux runners. |
+| Derive tarball and artifact names from `package.json` / tool output, never hard-code `<name>-*.tgz` | A package rename (e.g. a scope change) breaks the glob silently. |
 
 Ready-made patterns per ecosystem (Node, Python, Go, Rust, Docker/GHCR, deploy with OIDC, scheduled
 jobs, monorepo path filters, skip-safe required checks) are in **references/recipes.md**: read the
