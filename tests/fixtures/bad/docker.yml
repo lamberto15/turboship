@@ -1,0 +1,25 @@
+name: Integration
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  no-wait:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: docker compose up -d
+      - run: |
+          npm pack
+          npm install ./acme-ui-*.tgz
+  waits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for Docker
+        run: timeout 90 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done'
+      - run: docker compose up -d
+      - run: npm install "$RUNNER_TEMP"/pack/*.tgz
