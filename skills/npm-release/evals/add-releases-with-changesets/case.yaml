@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: add-releases-with-changesets
 expected_outcome: |
-  Changesets (current major) with access public and the right base branch, a release workflow using the changesets select-mode/version/publish flow with id-token: write only on the publish job, no npm token, verify before publishing, release concurrency never cancelled, a changeset check on PRs, a RELEASING.md with the first manual publish and trusted publisher steps, and nothing actually published.
+  Changesets (current major) with access public and the right base branch, a release workflow using the changesets select-mode/version/publish flow with id-token: write only on the publish job, no npm token, verify before publishing, release concurrency never cancelled, a changeset check on PRs, a RELEASING.md with the first manual publish (pnpm pack, then npm publish <tarball> --auth-type=web in the owner's own terminal, not by an agent; the latest dist-tag explained) and trusted publisher steps, the RELEASE_PAT trade-off explained, the npm scope checked for availability before files were written, and nothing actually published.
 context:
   scaffold_script: place-files.sh

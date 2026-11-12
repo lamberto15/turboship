@@ -17,7 +17,58 @@ git log --all --name-only --format= | sort -u | grep -iE '\.env|secret|credentia
 ```
 
 Any hit stops the process: tell the user, rotate the secret, and rewrite history only with their
-explicit agreement. Then: `gh repo edit {o}/{r} --visibility public --accept-visibility-change-consequences`.
+explicit agreement.
+
+### Commit author emails
+
+```bash
+git log --all --format='%ae' | sort | uniq -c | sort -rn
+gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"'   # the owner's noreply address
+```
+
+If a personal address appears, offer (don't impose) a rewrite to the noreply address with
+`git filter-repo`. Do it **before going public and after every open branch is merged** (a rewrite
+orphans open branches and PRs), in a fresh clone, then push once:
+
+```bash
+cat > /tmp/mailmap <<'EOF'
+Name <ID+login@users.noreply.github.com> <personal@example.com>
+EOF
+cat > /tmp/messages <<'EOF'
+personal@example.com==>ID+login@users.noreply.github.com
+EOF
+git filter-repo --mailmap /tmp/mailmap --replace-message /tmp/messages   # messages: DCO Signed-off-by lines
+git remote add origin git@github.com:{o}/{r}.git                         # filter-repo removes it
+git push --force-with-lease origin --all && git push --force-with-lease origin --tags
+git config user.email ID+login@users.noreply.github.com                  # so new commits stay clean
+```
+
+The default branch ruleset blocks force-pushes: apply rulesets after the rewrite, or disable the
+rule for this one push. Collaborators must re-clone.
+
+Closed and merged PRs keep their pre-rewrite commits under `refs/pull/N/head`, which only GitHub
+Support can purge. Tell the user, and give them this request to send
+(https://support.github.com/contact):
+
+> Subject: Remove cached views and PR refs after a history rewrite in {o}/{r}
+>
+> I rewrote the history of https://github.com/{o}/{r} to remove a personal email address from
+> commit metadata. Old commits are still reachable through pull request refs (refs/pull/*/head) of
+> PRs #<list>. Please run a garbage collection on the repository and remove those references and
+> any cached views of the old commits. The force-push happened on <date>.
+
+### Stale branches
+
+Remote branches, Dependabot ones included, carry the old history and become public too:
+
+```bash
+git ls-remote --heads origin
+git push origin --delete <branch>      # every branch except the default, once merged or abandoned
+```
+
+Then: `gh repo edit {o}/{r} --visibility public --accept-visibility-change-consequences`, and
+right after it, sections 2 and 4 (private vulnerability reporting, secret scanning with push
+protection, rulesets blocking deletion and force-push on the default branch and release tags).
 
 ## 2. Security features (free on public repos)
 
@@ -35,6 +86,15 @@ Add a short `SECURITY.md` (supported versions, link to
 the project's formatter (Biome lints Markdown) and add it through a PR once rulesets are active.
 
 ## 3. GitHub Actions settings
+
+In an organisation, enable the org-level setting **first**:
+https://github.com/organizations/{org}/settings/actions → "Allow GitHub Actions to create and
+approve pull requests". While it is off, the repo-level call below fails with
+`409 The organization does not allow GitHub Actions to create or approve pull requests`, and
+changing the org setting needs a token with `admin:org`
+(`gh api -X PUT orgs/{org}/actions/permissions/workflow -F can_approve_pull_request_reviews=true`).
+If you lack that scope, or a permission prompt blocks you, hand this step to the owner with the
+URL instead of retrying.
 
 ```bash
 # read-only token by default; Actions may open PRs (fallback for the Version Packages PR if RELEASE_PAT is missing)

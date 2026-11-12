@@ -27,6 +27,8 @@ From the repo, not from questions:
   `exports` / `main` / `types`, `files`, test runner, build tool.
 - Lint/format tools already in use (ESLint, Prettier, existing Biome config).
 - Existing workflows (`.github/workflows/`), monorepo layout (`pnpm-workspace.yaml`, workspaces).
+- Tests that need Docker (testcontainers, compose files) or assert timings: both need the
+  handling in step 4.
 - Default branch and visibility (`gh repo view --json defaultBranchRef,visibility`, else git).
 
 ### 2. Resolve current versions
@@ -101,6 +103,45 @@ Follow the github-actions skill's rules, with this structure:
   breaks branch protection (see the github-actions recipes).
 - Triggers: `pull_request` + `push` to the default branch + `workflow_dispatch`; top-level
   `permissions: contents: read`; PR concurrency; timeouts.
+
+**Tests that need Docker** (testcontainers, `docker compose` in a test setup). On fresh GitHub
+runners the Docker daemon is intermittently not ready when the first step runs (seen on the
+Ubuntu 26.04 image: the same image passed in one job and failed `docker info` in another minutes
+later). Do both:
+- In **every** job that runs those tests, the release workflow's publish job included (it runs
+  `verify`), add before them:
+  ```yaml
+      - name: Wait for Docker
+        run: timeout 90 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done'
+  ```
+- Make the test setup retry for about 60 s when `CI` is set, instead of failing on the first try:
+  ```ts
+  // e.g. a vitest globalSetup
+  import { execFileSync } from 'node:child_process';
+  export async function setup() {
+    const deadline = Date.now() + (process.env.CI ? 60_000 : 0);
+    for (;;) {
+      try { execFileSync('docker', ['info'], { stdio: 'ignore' }); return; }
+      catch (e) { if (Date.now() >= deadline) throw new Error('Docker is not available', { cause: e }); }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  ```
+
+**Tests that measure timing** (benchmarks, spikes asserting sample spacing, start-up pauses,
+"finishes within N ms"). Numbers measured on a developer's Mac don't hold on shared Linux runners,
+so these fail randomly in the gate. Keep them out of the per-push `verify`: skip them in CI
+(`it.skipIf(process.env.CI)` / `describe.skipIf`) and run them locally, or in a separate nightly
+workflow that doesn't feed `ci-ok`. Functional assertions stay in the gate; only the measurements move.
+
+**Tarball names.** When a job packs packages to test them as a consumer would (install the
+tarball in a scratch project), never hard-code the file name (`acme-ui-*.tgz`): it embeds the
+scope and name, and a rename breaks the script silently. Pack each package into its own empty
+directory and take the one `.tgz` there (`pnpm pack --pack-destination "$RUNNER_TEMP/pack/ui"`),
+or read `filename` from `pnpm pack --json` (an object with an absolute path; `npm pack --json`
+prints an array with a bare file name, and lifecycle-script output also lands on stdout, which is
+why the empty directory is the more robust choice). `check-workflows.mjs` warns about hard-coded
+`<name>-*.tgz` globs in workflows.
 
 ### 5. Dependabot
 

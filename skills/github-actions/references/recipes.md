@@ -202,6 +202,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          sbom: ${{ github.event_name != 'pull_request' }}   # SBOM attestation on pushed images
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - uses: actions/attest-build-provenance@<pin>
@@ -215,6 +216,81 @@ jobs:
 Multi-platform: add `docker/setup-qemu-action@<pin>` and `platforms: linux/amd64,linux/arm64`
 (slower; only when ARM users exist). Pin base images in the Dockerfile to a supported release line
 (check with `--runtime <name>`), and let Dependabot's `docker` ecosystem update them.
+
+### A service image published by the release workflow (next to an npm publish)
+
+When a monorepo releases npm packages with Changesets and also ships a service as an image,
+publish the image from the **same release workflow**, gated the same way as the npm publish (only
+when the publish mode ran), so an image never exists for a version that wasn't released. Read the
+version from the service's `package.json` after `changeset version` bumped it. Only this job gets
+`packages`, `id-token` and `attestations` write. Check the inputs with
+`resolve-versions.mjs --inputs` (`provenance` and `sbom` are build-push-action inputs).
+
+```yaml
+  image:
+    needs: [select, publish]                       # after the npm publish succeeded
+    if: needs.select.outputs.mode == 'publish'     # the same gate as the npm publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write          # push to ghcr.io
+      id-token: write          # sign the provenance/SBOM attestations
+      attestations: write
+    steps:
+      - uses: actions/checkout@<pin>
+        with:
+          persist-credentials: false
+      - id: version            # never hard-code: read it from the service's package.json
+        run: echo "version=$(node -p 'require("./services/api/package.json").version')" >> "$GITHUB_OUTPUT"
+      - id: dist-tag           # pre-release versions (1.0.0-alpha.3) → their pre tag, else latest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          case "$VERSION" in
+            *-*) tag="${VERSION#*-}"; echo "tag=${tag%%.*}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "tag=latest" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - uses: docker/setup-qemu-action@<pin>
+      - uses: docker/setup-buildx-action@<pin>
+      - uses: docker/login-action@<pin>
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@<pin>
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/api
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.dist-tag.outputs.tag }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+      - uses: docker/build-push-action@<pin>
+        with:
+          context: .
+          file: services/api/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}   # OCI labels: source, revision, created, licenses...
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+Notes:
+- metadata-action fills the standard OCI labels (`org.opencontainers.image.source` links the
+  package to the repo on GHCR); the image name must be lowercase.
+- `provenance: mode=max` and `sbom: true` attach BuildKit attestations to the image in the
+  registry. Add `actions/attest-build-provenance` (as in the recipe above) when consumers verify
+  with `gh attestation verify`.
+- A new GHCR package may start **private** (it inherits the account's default package
+  visibility). The owner makes it public once: package → Package settings → Change visibility.
+  Tell them; it can't be done from the workflow's token.
+- Lowercase `github.repository_owner` if the org name has capitals (GHCR rejects uppercase).
 
 <a id="deploy"></a>
 ## Deploy with Environments + OIDC

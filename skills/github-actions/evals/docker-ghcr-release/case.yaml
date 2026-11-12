@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: docker-ghcr-release
 expected_outcome: |
-  A workflow that builds the Docker image on pull requests without pushing and pushes it to ghcr.io on v* tags, with packages: write granted only to the job that needs it, pinned actions, build caching, timeouts, Dependabot, and the outdated/EOL base image in the Dockerfile updated or clearly flagged.
+  A workflow that builds the Docker image on pull requests without pushing and pushes it to ghcr.io on v* tags, with packages: write granted only to the job that needs it, pinned actions, build caching, a provenance attestation and an SBOM on the pushed image, timeouts, Dependabot, and the outdated/EOL base image in the Dockerfile updated or clearly flagged.
 context:
   scaffold_script: place-files.sh

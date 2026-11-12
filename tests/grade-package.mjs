@@ -150,6 +150,20 @@ if (caseName === 'add-releases-with-changesets' || caseName === 'migrate-npm-tok
   check('RELEASING.md documents the first manual publish and the trusted publisher setup', /trusted publish/i.test(releasing) && /first (publish|release)|manual/i.test(releasing), releasing ? `trusted ${/trusted publish/i.test(releasing)}, first manual ${/first (publish|release)|manual/i.test(releasing)}` : 'missing');
   check('package.json has a release script running changeset publish and public publishConfig', /changeset publish/.test(pkg.scripts?.release ?? '') && pkg.publishConfig?.access === 'public',
     `release "${pkg.scripts?.release ?? '-'}"; publishConfig ${JSON.stringify(pkg.publishConfig ?? '-')}`);
+  // lessons from the first real release (2026-11-12)
+  if (caseName === 'add-releases-with-changesets') { // a never-published package: the first publish is manual
+    const firstPublish = /pnpm pack/.test(releasing) && /npm publish \S+\.tgz[^\n]*--auth-type[= ]web/.test(releasing) && /agent/i.test(releasing);
+    check('RELEASING.md: first publish packs with pnpm and runs npm publish <tarball> --auth-type=web in the owner\'s terminal (not an agent)', firstPublish,
+      `pnpm pack ${/pnpm pack/.test(releasing)}, npm publish tarball web ${/npm publish \S+\.tgz[^\n]*--auth-type[= ]web/.test(releasing)}, agent note ${/agent/i.test(releasing)}`);
+    check('RELEASING.md says what happens to the latest dist-tag after a manual first publish', /dist-tag/.test(releasing) && /latest/.test(releasing), `dist-tag ${/dist-tag/.test(releasing)}`);
+  }
+  const both = `${releasing}\n${summary}`;
+  const patTradeoff = /RELEASE_PAT/.test(both) && /no checks|without (it|the PAT|RELEASE_PAT)[^.]*(CI|checks)/i.test(both);
+  check('The RELEASE_PAT trade-off is explained (without it the version PR has no CI)', patTradeoff, `RELEASE_PAT ${/RELEASE_PAT/.test(both)}, trade-off ${patTradeoff}`);
+  if (caseName === 'add-releases-with-changesets') {
+    const preflight = /registry\.npmjs\.org\/-\/org|Scope not found|scope[^.\n]{0,40}(free|available|taken|owned)|(free|available|taken|owned)[^.\n]{0,40}scope/i.test(summary);
+    check('The summary reports the npm scope/name availability preflight', preflight, preflight ? 'reported' : 'not mentioned');
+  }
   check('Pull requests are checked for a changeset', /changeset status/.test(wfText) || /changesets\/action\/pr-status/.test(wfText) || /changeset-bot/.test(wfText), /changeset status|pr-status/.test(wfText) ? 'found' : 'none');
   const [ok, msg] = runVerify();
   check('pnpm install --frozen-lockfile && pnpm run verify pass on the result', ok, msg);

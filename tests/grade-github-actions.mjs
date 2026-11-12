@@ -84,6 +84,10 @@ if (caseName === 'docker-ghcr-release') {
   check('Triggers on v* version tags and on pull requests', /tags:\s*(\[\s*["']?v|\n\s*-\s*["']?v)/.test(wfText) && /pull_request/.test(wfText), 'tag + pull_request triggers checked');
   const top = workflows.map((f) => readFileSync(f, 'utf8').split(/^jobs:/m)[0]).join('\n');
   check('packages: write is not granted at the workflow top level (only in the job)', /packages:\s*write/.test(wfText) && !/packages:\s*write/.test(top), /packages:\s*write/.test(top) ? 'packages: write at top level' : 'job-level only');
+  // literal true, or an expression (e.g. only on pushes: `sbom: ${{ github.event_name != 'pull_request' }}`)
+  const prov = /provenance:\s*["']?(mode=max|\$\{\{)/.test(wfText) || /attest-build-provenance@/.test(wfText);
+  const sbom = /sbom:\s*["']?(true|\$\{\{)/.test(wfText) || /attest-sbom@/.test(wfText);
+  check('The pushed image carries a build provenance attestation and an SBOM', prov && sbom, `provenance ${prov}, sbom ${sbom}`);
   check('The Docker build uses a layer cache', /cache-from:/.test(wfText), /cache-from:/.test(wfText) ? 'cache-from set' : 'no cache-from');
   const docker = read('Dockerfile');
   const eol = /FROM\s+node:(1[0-9]|20)\b/.test(docker);
